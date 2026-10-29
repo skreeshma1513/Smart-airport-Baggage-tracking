@@ -1,0 +1,182 @@
+{% extends "base.html" %}
+
+{% block title %}Priority Queue{% endblock %}
+{% block page_title %}Smart Priority Queue{% endblock %}
+
+{% block content %}
+<div class="priority-queue-container">
+  <!-- Info Card / Alert at top -->
+  <div class="alert alert-info border-0 shadow-sm d-flex align-items-center mb-4 py-3" role="alert">
+    <div class="rounded-circle bg-info bg-opacity-25 p-2 me-3 text-info d-flex align-items-center justify-content-center" style="width: 44px; height: 44px;">
+      <i class="fas fa-brain fa-lg"></i>
+    </div>
+    <div>
+      <h6 class="alert-heading fw-bold mb-1">AI-Assisted Priority Queue</h6>
+      <p class="mb-0 small">Baggage sorted by intelligent priority scoring. Higher scores indicate passengers requiring priority assistance, tight flight connections, or special needs handling.</p>
+    </div>
+  </div>
+
+  <!-- Priority Queue Table Card -->
+  <div class="card shadow-sm">
+    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+      <div class="d-flex align-items-center gap-2">
+        <i class="fas fa-sort-amount-up text-primary"></i>
+        <h5 class="mb-0 fw-bold">Live Priority Queue</h5>
+      </div>
+      <div class="d-flex align-items-center gap-2">
+        <span class="badge bg-primary">{{ queue|length if queue is defined else 0 }} items queued</span>
+        <button class="btn btn-sm btn-outline-secondary" onclick="window.location.reload();" title="Refresh Queue">
+          <i class="fas fa-sync-alt me-1"></i> Refresh
+        </button>
+      </div>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover table-striped align-middle mb-0">
+          <thead>
+            <tr>
+              <th scope="col" style="width: 70px;">Queue #</th>
+              <th scope="col">Passenger</th>
+              <th scope="col">Baggage ID</th>
+              <th scope="col">Flight</th>
+              <th scope="col">Category</th>
+              <th scope="col" style="min-width: 150px;">Priority Score</th>
+              <th scope="col">Priority Level</th>
+              <th scope="col">Status</th>
+              <th scope="col">Est. Wait</th>
+              <th scope="col">Delay Risk</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% if queue and queue|length > 0 %}
+              {% for b in queue %}
+              <tr>
+                <td>
+                  <span class="badge rounded-pill {% if loop.index <= 3 %}bg-danger{% elif loop.index <= 8 %}bg-warning text-dark{% else %}bg-secondary{% endif %} px-2 py-1">
+                    #{{ loop.index }}
+                  </span>
+                </td>
+                <td>
+                  <div class="fw-semibold text-dark">{{ b.passenger.name if b.passenger is defined and b.passenger.name is defined else (b.passenger_name|default('Passenger')) }}</div>
+                  <div class="small text-muted d-flex align-items-center gap-1">
+                    <span>{{ b.passenger.passenger_id if b.passenger is defined and b.passenger.passenger_id is defined else (b.passenger_id|default('')) }}</span>
+                    {% if b.priority_reason %}
+                      <span class="text-secondary">•</span>
+                      <span class="text-primary fw-medium" title="{{ b.priority_reason }}">
+                        <i class="fas fa-info-circle me-1"></i>{{ b.priority_reason }}
+                      </span>
+                    {% endif %}
+                  </div>
+                </td>
+                <td>
+                  <span class="badge bg-light text-dark border font-monospace fw-semibold">{{ b.baggage_id }}</span>
+                </td>
+                <td>
+                  <span class="badge bg-secondary-subtle text-secondary-emphasis">{{ b.flight_number }}</span>
+                </td>
+                <td>
+                  {% set cat = b.passenger.category if b.passenger is defined and b.passenger.category is defined else (b.category|default('Normal')) %}
+                  {% if cat == 'Elderly' %}
+                    <span class="badge bg-warning text-dark"><i class="fas fa-blind me-1"></i>Elderly</span>
+                  {% elif cat == 'Pregnant' %}
+                    <span class="badge bg-info text-dark"><i class="fas fa-baby me-1"></i>Pregnant</span>
+                  {% elif cat == 'Differently-Abled' %}
+                    <span class="badge bg-danger"><i class="fas fa-wheelchair me-1"></i>Differently-Abled</span>
+                  {% elif cat == 'Special Assistance' %}
+                    <span class="badge bg-primary"><i class="fas fa-hands-helping me-1"></i>Special Assistance</span>
+                  {% else %}
+                    <span class="badge bg-secondary">Normal</span>
+                  {% endif %}
+                </td>
+                <td>
+                  <div class="d-flex align-items-center gap-2">
+                    <span class="fw-bold fs-6">{{ b.priority_score }}</span>
+                    <div class="progress flex-grow-1" style="height: 8px;">
+                      {% if b.priority_level == 'HIGH' or (b.priority_score|default(0)|int >= 70) %}
+                        <div class="progress-bar bg-danger progress-bar-striped progress-bar-animated" role="progressbar" style="width: {{ b.priority_score }}%" aria-valuenow="{{ b.priority_score }}" aria-valuemin="0" aria-valuemax="100"></div>
+                      {% elif b.priority_level == 'MEDIUM' or (b.priority_score|default(0)|int >= 40) %}
+                        <div class="progress-bar bg-warning" role="progressbar" style="width: {{ b.priority_score }}%" aria-valuenow="{{ b.priority_score }}" aria-valuemin="0" aria-valuemax="100"></div>
+                      {% else %}
+                        <div class="progress-bar bg-success" role="progressbar" style="width: {{ b.priority_score }}%" aria-valuenow="{{ b.priority_score }}" aria-valuemin="0" aria-valuemax="100"></div>
+                      {% endif %}
+                    </div>
+                  </div>
+                </td>
+                <td>
+                  {% if b.priority_level == 'HIGH' %}
+                    <span class="badge bg-danger">HIGH</span>
+                  {% elif b.priority_level == 'MEDIUM' %}
+                    <span class="badge bg-warning text-dark">MEDIUM</span>
+                  {% else %}
+                    <span class="badge bg-success">LOW</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% set st = b.status|default('Checked In') %}
+                  {% if st == 'Checked In' %}
+                    <span class="badge bg-secondary">Checked In</span>
+                  {% elif st == 'Processing' %}
+                    <span class="badge bg-primary">Processing</span>
+                  {% elif st == 'Loaded' %}
+                    <span class="badge bg-info text-dark">Loaded</span>
+                  {% elif st == 'Arrived' %}
+                    <span class="badge bg-success">Arrived</span>
+                  {% elif st == 'Claim Ready' %}
+                    <span class="badge bg-success fw-bold"><i class="fas fa-check-circle me-1"></i>Claim Ready</span>
+                  {% elif st == 'Collected' %}
+                    <span class="badge bg-dark">Collected</span>
+                  {% elif st == 'Delayed' %}
+                    <span class="badge bg-danger"><i class="fas fa-clock me-1"></i>Delayed</span>
+                  {% else %}
+                    <span class="badge bg-secondary">{{ st }}</span>
+                  {% endif %}
+                </td>
+                <td class="text-nowrap text-muted fw-medium">
+                  <i class="far fa-clock me-1 text-primary"></i>{{ b.estimated_wait_time|default(b.estimated_wait|default('15')) }} mins
+                </td>
+                <td>
+                  {% set risk = b.delay_risk|default('LOW') %}
+                  {% if risk == 'HIGH' %}
+                    <span class="badge bg-danger" title="{{ b.delay_risk_reason|default('High risk of baggage delay') }}">
+                      <i class="fas fa-exclamation-triangle me-1"></i>HIGH
+                    </span>
+                  {% elif risk == 'MEDIUM' %}
+                    <span class="badge bg-warning text-dark" title="{{ b.delay_risk_reason|default('Moderate risk of delay') }}">
+                      <i class="fas fa-exclamation-circle me-1"></i>MEDIUM
+                    </span>
+                  {% else %}
+                    <span class="badge bg-success" title="{{ b.delay_risk_reason|default('On-time baggage delivery expected') }}">
+                      <i class="fas fa-check me-1"></i>LOW
+                    </span>
+                  {% endif %}
+                  {% if b.delay_risk_reason %}
+                    <div class="small text-muted" style="font-size: 0.725rem;">{{ b.delay_risk_reason }}</div>
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            {% else %}
+              <tr>
+                <td colspan="10" class="text-center py-5 text-muted">
+                  <i class="fas fa-sort-amount-up fa-3x mb-3 text-secondary opacity-50 d-block"></i>
+                  <h6 class="fw-semibold">No baggage items currently in the priority queue.</h6>
+                  <p class="small text-muted mb-0">Baggage will appear here automatically when checked in and scored by the AI engine.</p>
+                </td>
+              </tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Auto-refresh priority queue periodically every 60 seconds
+  setTimeout(function() {
+    window.location.reload();
+  }, 60000);
+</script>
+{% endblock %}

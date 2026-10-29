@@ -1,0 +1,330 @@
+{% extends "base.html" %}
+
+{% block title %}Passengers{% endblock %}
+{% block page_title %}Passenger Management{% endblock %}
+
+{% block content %}
+<div class="passengers-container">
+  <!-- Action Bar & Filter Form -->
+  <div class="card shadow-sm mb-4">
+    <div class="card-body p-3">
+      <form method="GET" action="/passengers" class="row g-2 align-items-center">
+        <!-- Search Input -->
+        <div class="col-12 col-md-4">
+          <div class="input-group">
+            <span class="input-group-text bg-white border-end-0">
+              <i class="fas fa-search text-muted"></i>
+            </span>
+            <input 
+              type="text" 
+              name="search" 
+              class="form-control border-start-0" 
+              placeholder="Search by name, ID, or flight..." 
+              value="{{ request.args.get('search', '') }}"
+            >
+          </div>
+        </div>
+
+        <!-- Category Filter Dropdown -->
+        <div class="col-12 col-md-3">
+          <select name="category" class="form-select">
+            <option value="">All Categories</option>
+            <option value="Normal" {% if request.args.get('category') == 'Normal' %}selected{% endif %}>Normal</option>
+            <option value="Elderly" {% if request.args.get('category') == 'Elderly' %}selected{% endif %}>Elderly</option>
+            <option value="Pregnant" {% if request.args.get('category') == 'Pregnant' %}selected{% endif %}>Pregnant</option>
+            <option value="Differently-Abled" {% if request.args.get('category') == 'Differently-Abled' %}selected{% endif %}>Differently-Abled</option>
+            <option value="Special Assistance" {% if request.args.get('category') == 'Special Assistance' %}selected{% endif %}>Special Assistance</option>
+          </select>
+        </div>
+
+        <!-- Filter & Reset Buttons -->
+        <div class="col-12 col-md-2 d-flex gap-2">
+          <button type="submit" class="btn btn-primary flex-grow-1">
+            <i class="fas fa-filter me-1"></i> Filter
+          </button>
+          {% if request.args.get('search') or request.args.get('category') %}
+            <a href="/passengers" class="btn btn-outline-secondary" title="Reset Filters">
+              <i class="fas fa-undo"></i>
+            </a>
+          {% endif %}
+        </div>
+
+        <!-- Add Passenger Button -->
+        <div class="col-12 col-md-3 text-md-end">
+          <button type="button" class="btn btn-success w-100 w-md-auto" data-bs-toggle="modal" data-bs-target="#addPassengerModal">
+            <i class="fas fa-user-plus me-1"></i> Add Passenger
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Passengers Table -->
+  <div class="card shadow-sm">
+    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+      <h5 class="mb-0 fw-bold">
+        <i class="fas fa-users text-primary me-2"></i>Passenger Directory
+      </h5>
+      <span class="badge bg-secondary">{{ passengers|length if passengers is defined else 0 }} passengers</span>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover table-striped align-middle mb-0">
+          <thead>
+            <tr>
+              <th scope="col">Passenger ID</th>
+              <th scope="col">Name</th>
+              <th scope="col">Age</th>
+              <th scope="col">Flight</th>
+              <th scope="col">Category</th>
+              <th scope="col">Assistance Required</th>
+              <th scope="col">Phone</th>
+              <th scope="col" class="text-end">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% if passengers and passengers|length > 0 %}
+              {% for p in passengers %}
+              <tr>
+                <td>
+                  <span class="badge bg-light text-dark border font-monospace fw-semibold">{{ p.passenger_id }}</span>
+                </td>
+                <td class="fw-semibold text-dark">{{ p.name }}</td>
+                <td>{{ p.age }}</td>
+                <td>
+                  <span class="badge bg-primary-subtle text-primary-emphasis fw-medium">{{ p.flight_number }}</span>
+                </td>
+                <td>
+                  {% if p.category == 'Elderly' %}
+                    <span class="badge bg-warning text-dark"><i class="fas fa-blind me-1"></i>Elderly</span>
+                  {% elif p.category == 'Pregnant' %}
+                    <span class="badge bg-info text-dark"><i class="fas fa-baby me-1"></i>Pregnant</span>
+                  {% elif p.category == 'Differently-Abled' %}
+                    <span class="badge bg-danger"><i class="fas fa-wheelchair me-1"></i>Differently-Abled</span>
+                  {% elif p.category == 'Special Assistance' %}
+                    <span class="badge bg-primary"><i class="fas fa-hands-helping me-1"></i>Special Assistance</span>
+                  {% else %}
+                    <span class="badge bg-secondary">Normal</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if p.assistance_required and p.assistance_required != 'None' and p.assistance_required != 'none' %}
+                    <span class="badge bg-danger-subtle text-danger-emphasis border border-danger-subtle">
+                      <i class="fas fa-hands-helping me-1"></i>{{ p.assistance_required }}
+                    </span>
+                  {% else %}
+                    <span class="text-muted small">None</span>
+                  {% endif %}
+                </td>
+                <td class="text-muted">{{ p.phone|default('—') }}</td>
+                <td class="text-end">
+                  <div class="btn-group btn-group-sm" role="group">
+                    <button 
+                      type="button" 
+                      class="btn btn-outline-primary" 
+                      title="Edit Passenger"
+                      onclick="editPassenger('{{ p.id }}', '{{ p.name|escape }}', '{{ p.age }}', '{{ p.flight_number|escape }}', '{{ p.category|escape }}', '{{ p.assistance_required|escape }}', '{{ p.phone|default('')|escape }}')"
+                    >
+                      <i class="fas fa-edit"></i>
+                    </button>
+                    <form 
+                      action="/passengers/delete/{{ p.id }}" 
+                      method="POST" 
+                      class="d-inline"
+                      onsubmit="return confirmDelete('{{ p.name|escape }}');"
+                    >
+                      <button type="submit" class="btn btn-outline-danger" title="Delete Passenger">
+                        <i class="fas fa-trash-alt"></i>
+                      </button>
+                    </form>
+                  </div>
+                </td>
+              </tr>
+              {% endfor %}
+            {% else %}
+              <tr>
+                <td colspan="8" class="text-center py-5 text-muted">
+                  <i class="fas fa-user-slash fa-3x mb-3 text-secondary opacity-50 d-block"></i>
+                  <h6 class="fw-semibold">No passengers found</h6>
+                  <p class="small text-muted mb-3">Try adjusting your search criteria or add a new passenger.</p>
+                  <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addPassengerModal">
+                    <i class="fas fa-user-plus me-1"></i> Add Passenger
+                  </button>
+                </td>
+              </tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Add Passenger Modal -->
+<div class="modal fade" id="addPassengerModal" tabindex="-1" aria-labelledby="addPassengerModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form action="/passengers/add" method="POST">
+        <div class="modal-header">
+          <h5 class="modal-title fw-bold" id="addPassengerModalLabel">
+            <i class="fas fa-user-plus text-primary me-2"></i>Add New Passenger
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="add_name" class="form-label fw-semibold">Full Name <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" id="add_name" name="name" required placeholder="e.g. John Doe">
+          </div>
+          
+          <div class="row g-3 mb-3">
+            <div class="col-md-6">
+              <label for="add_age" class="form-label fw-semibold">Age <span class="text-danger">*</span></label>
+              <input type="number" class="form-control" id="add_age" name="age" min="1" max="120" required placeholder="e.g. 68">
+            </div>
+            <div class="col-md-6">
+              <label for="add_flight_number" class="form-label fw-semibold">Flight Number <span class="text-danger">*</span></label>
+              <input type="text" class="form-control" id="add_flight_number" name="flight_number" required placeholder="e.g. AI-202" style="text-transform: uppercase;">
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label for="add_category" class="form-label fw-semibold">Passenger Category <span class="text-danger">*</span></label>
+            <select class="form-select" id="add_category" name="category" required>
+              <option value="Normal">Normal</option>
+              <option value="Elderly">Elderly (Age 60+)</option>
+              <option value="Pregnant">Pregnant</option>
+              <option value="Differently-Abled">Differently-Abled</option>
+              <option value="Special Assistance">Special Assistance</option>
+            </select>
+          </div>
+
+          <div class="mb-3">
+            <label for="add_assistance_required" class="form-label fw-semibold">Assistance Required</label>
+            <select class="form-select" id="add_assistance_required" name="assistance_required">
+              <option value="None">None</option>
+              <option value="Wheelchair Assistance">Wheelchair Assistance</option>
+              <option value="Elderly Assistance">Elderly Assistance</option>
+              <option value="Baggage Collection Assistance">Baggage Collection Assistance</option>
+              <option value="General Assistance">General Assistance</option>
+            </select>
+          </div>
+
+          <div class="mb-3">
+            <label for="add_phone" class="form-label fw-semibold">Phone Number</label>
+            <input type="tel" class="form-control" id="add_phone" name="phone" placeholder="e.g. +1 555-0199">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">
+            <i class="fas fa-save me-1"></i> Save Passenger
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Passenger Modal -->
+<div class="modal fade" id="editPassengerModal" tabindex="-1" aria-labelledby="editPassengerModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form id="editPassengerForm" action="" method="POST">
+        <div class="modal-header">
+          <h5 class="modal-title fw-bold" id="editPassengerModalLabel">
+            <i class="fas fa-user-edit text-primary me-2"></i>Edit Passenger Details
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="edit_name" class="form-label fw-semibold">Full Name <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" id="edit_name" name="name" required>
+          </div>
+          
+          <div class="row g-3 mb-3">
+            <div class="col-md-6">
+              <label for="edit_age" class="form-label fw-semibold">Age <span class="text-danger">*</span></label>
+              <input type="number" class="form-control" id="edit_age" name="age" min="1" max="120" required>
+            </div>
+            <div class="col-md-6">
+              <label for="edit_flight_number" class="form-label fw-semibold">Flight Number <span class="text-danger">*</span></label>
+              <input type="text" class="form-control" id="edit_flight_number" name="flight_number" required style="text-transform: uppercase;">
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label for="edit_category" class="form-label fw-semibold">Passenger Category <span class="text-danger">*</span></label>
+            <select class="form-select" id="edit_category" name="category" required>
+              <option value="Normal">Normal</option>
+              <option value="Elderly">Elderly</option>
+              <option value="Pregnant">Pregnant</option>
+              <option value="Differently-Abled">Differently-Abled</option>
+              <option value="Special Assistance">Special Assistance</option>
+            </select>
+          </div>
+
+          <div class="mb-3">
+            <label for="edit_assistance_required" class="form-label fw-semibold">Assistance Required</label>
+            <select class="form-select" id="edit_assistance_required" name="assistance_required">
+              <option value="None">None</option>
+              <option value="Wheelchair Assistance">Wheelchair Assistance</option>
+              <option value="Elderly Assistance">Elderly Assistance</option>
+              <option value="Baggage Collection Assistance">Baggage Collection Assistance</option>
+              <option value="General Assistance">General Assistance</option>
+            </select>
+          </div>
+
+          <div class="mb-3">
+            <label for="edit_phone" class="form-label fw-semibold">Phone Number</label>
+            <input type="tel" class="form-control" id="edit_phone" name="phone">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">
+            <i class="fas fa-check me-1"></i> Update Passenger
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  function editPassenger(id, name, age, flight, category, assistance, phone) {
+    const form = document.getElementById('editPassengerForm');
+    form.action = `/passengers/edit/${id}`;
+    
+    document.getElementById('edit_name').value = name || '';
+    document.getElementById('edit_age').value = age || '';
+    document.getElementById('edit_flight_number').value = flight || '';
+    document.getElementById('edit_category').value = category || 'Normal';
+    document.getElementById('edit_assistance_required').value = assistance || 'None';
+    document.getElementById('edit_phone').value = phone || '';
+
+    const modal = new bootstrap.Modal(document.getElementById('editPassengerModal'));
+    modal.show();
+  }
+
+  function confirmDelete(name) {
+    return confirm(`Are you sure you want to delete passenger "${name}"? This action cannot be undone.`);
+  }
+
+  // Auto-sync category when age is entered in Add form
+  document.getElementById('add_age')?.addEventListener('input', function(e) {
+    const age = parseInt(e.target.value);
+    const categorySelect = document.getElementById('add_category');
+    if (age >= 60 && categorySelect.value === 'Normal') {
+      categorySelect.value = 'Elderly';
+      const assistanceSelect = document.getElementById('add_assistance_required');
+      if (assistanceSelect.value === 'None') {
+        assistanceSelect.value = 'Elderly Assistance';
+      }
+    }
+  });
+</script>
+{% endblock %}

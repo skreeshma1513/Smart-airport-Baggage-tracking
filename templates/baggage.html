@@ -1,0 +1,308 @@
+{% extends "base.html" %}
+
+{% block title %}Baggage{% endblock %}
+{% block page_title %}Baggage Management{% endblock %}
+
+{% block content %}
+<div class="baggage-container">
+  <!-- Action Bar & Filter Form -->
+  <div class="card shadow-sm mb-4">
+    <div class="card-body p-3">
+      <form method="GET" action="/baggage" class="row g-2 align-items-center">
+        <!-- Search Input -->
+        <div class="col-12 col-md-4">
+          <div class="input-group">
+            <span class="input-group-text bg-white border-end-0">
+              <i class="fas fa-search text-muted"></i>
+            </span>
+            <input 
+              type="text" 
+              name="search" 
+              class="form-control border-start-0" 
+              placeholder="Search by Baggage ID, Passenger, or Flight..." 
+              value="{{ request.args.get('search', '') }}"
+            >
+          </div>
+        </div>
+
+        <!-- Status Filter Dropdown -->
+        <div class="col-12 col-md-3">
+          <select name="status" class="form-select">
+            <option value="">All Statuses</option>
+            <option value="Checked In" {% if request.args.get('status') == 'Checked In' %}selected{% endif %}>Checked In</option>
+            <option value="Processing" {% if request.args.get('status') == 'Processing' %}selected{% endif %}>Processing</option>
+            <option value="Loaded" {% if request.args.get('status') == 'Loaded' %}selected{% endif %}>Loaded</option>
+            <option value="Arrived" {% if request.args.get('status') == 'Arrived' %}selected{% endif %}>Arrived</option>
+            <option value="Claim Ready" {% if request.args.get('status') == 'Claim Ready' %}selected{% endif %}>Claim Ready</option>
+            <option value="Collected" {% if request.args.get('status') == 'Collected' %}selected{% endif %}>Collected</option>
+            <option value="Delayed" {% if request.args.get('status') == 'Delayed' %}selected{% endif %}>Delayed</option>
+          </select>
+        </div>
+
+        <!-- Filter & Reset Buttons -->
+        <div class="col-12 col-md-2 d-flex gap-2">
+          <button type="submit" class="btn btn-primary flex-grow-1">
+            <i class="fas fa-filter me-1"></i> Filter
+          </button>
+          {% if request.args.get('search') or request.args.get('status') %}
+            <a href="/baggage" class="btn btn-outline-secondary" title="Reset Filters">
+              <i class="fas fa-undo"></i>
+            </a>
+          {% endif %}
+        </div>
+
+        <!-- Add Baggage Button -->
+        <div class="col-12 col-md-3 text-md-end">
+          <button type="button" class="btn btn-primary w-100 w-md-auto" data-bs-toggle="modal" data-bs-target="#addBaggageModal">
+            <i class="fas fa-suitcase-rolling me-1"></i> Add Baggage
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Baggage Table -->
+  <div class="card shadow-sm">
+    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+      <h5 class="mb-0 fw-bold">
+        <i class="fas fa-luggage-cart text-primary me-2"></i>Baggage Inventory & Status
+      </h5>
+      <span class="badge bg-secondary">{{ baggage_list|length if baggage_list is defined else (baggage|length if baggage is defined else 0) }} items</span>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover table-striped align-middle mb-0">
+          <thead>
+            <tr>
+              <th scope="col">Baggage ID</th>
+              <th scope="col">Passenger</th>
+              <th scope="col">Flight</th>
+              <th scope="col">Status</th>
+              <th scope="col">Priority Level</th>
+              <th scope="col">Priority Score</th>
+              <th scope="col">Est. Wait</th>
+              <th scope="col">Check-in Time</th>
+              <th scope="col" class="text-end">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% set items = baggage_list if baggage_list is defined else (baggage if baggage is defined else []) %}
+            {% if items and items|length > 0 %}
+              {% for b in items %}
+              <tr>
+                <td>
+                  <span class="badge bg-light text-dark border font-monospace fw-semibold">{{ b.baggage_id }}</span>
+                </td>
+                <td>
+                  <div class="fw-semibold text-dark">{{ b.passenger.name if b.passenger is defined and b.passenger.name is defined else (b.passenger_name|default('Passenger')) }}</div>
+                  <small class="text-muted">{{ b.passenger.passenger_id if b.passenger is defined and b.passenger.passenger_id is defined else (b.passenger_id|default('')) }}</small>
+                </td>
+                <td>
+                  <span class="badge bg-secondary-subtle text-secondary-emphasis">{{ b.flight_number }}</span>
+                </td>
+                <td>
+                  {% set st = b.status|default('Checked In') %}
+                  {% if st == 'Checked In' %}
+                    <span class="badge bg-secondary">Checked In</span>
+                  {% elif st == 'Processing' %}
+                    <span class="badge bg-primary">Processing</span>
+                  {% elif st == 'Loaded' %}
+                    <span class="badge bg-info text-dark">Loaded</span>
+                  {% elif st == 'Arrived' %}
+                    <span class="badge bg-success">Arrived</span>
+                  {% elif st == 'Claim Ready' %}
+                    <span class="badge bg-success fw-bold"><i class="fas fa-check-circle me-1"></i>Claim Ready</span>
+                  {% elif st == 'Collected' %}
+                    <span class="badge bg-dark">Collected</span>
+                  {% elif st == 'Delayed' %}
+                    <span class="badge bg-danger"><i class="fas fa-exclamation-triangle me-1"></i>Delayed</span>
+                  {% else %}
+                    <span class="badge bg-secondary">{{ st }}</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if b.priority_level == 'HIGH' %}
+                    <span class="badge bg-danger">HIGH</span>
+                  {% elif b.priority_level == 'MEDIUM' %}
+                    <span class="badge bg-warning text-dark">MEDIUM</span>
+                  {% else %}
+                    <span class="badge bg-success">LOW</span>
+                  {% endif %}
+                </td>
+                <td>
+                  <div class="d-flex align-items-center gap-2">
+                    <span class="fw-bold">{{ b.priority_score }}</span>
+                    <div class="progress flex-grow-1" style="height: 6px; width: 45px;">
+                      {% if b.priority_level == 'HIGH' or (b.priority_score|default(0)|int >= 70) %}
+                        <div class="progress-bar bg-danger" role="progressbar" style="width: {{ b.priority_score }}%"></div>
+                      {% elif b.priority_level == 'MEDIUM' or (b.priority_score|default(0)|int >= 40) %}
+                        <div class="progress-bar bg-warning" role="progressbar" style="width: {{ b.priority_score }}%"></div>
+                      {% else %}
+                        <div class="progress-bar bg-success" role="progressbar" style="width: {{ b.priority_score }}%"></div>
+                      {% endif %}
+                    </div>
+                  </div>
+                </td>
+                <td class="text-nowrap text-muted">
+                  <i class="far fa-clock me-1"></i>{{ b.estimated_wait_time|default(b.estimated_wait|default('15')) }} mins
+                </td>
+                <td class="text-nowrap text-muted small">
+                  {% if b.check_in_time %}
+                    {{ b.check_in_time.strftime('%Y-%m-%d %H:%M') if b.check_in_time.strftime is defined else b.check_in_time }}
+                  {% elif b.created_at %}
+                    {{ b.created_at.strftime('%Y-%m-%d %H:%M') if b.created_at.strftime is defined else b.created_at }}
+                  {% else %}
+                    Recent
+                  {% endif %}
+                </td>
+                <td class="text-end">
+                  <button 
+                    type="button" 
+                    class="btn btn-sm btn-outline-primary text-nowrap"
+                    onclick="updateStatus('{{ b.id }}', '{{ b.status|escape }}', '{{ b.baggage_id|escape }}')"
+                  >
+                    <i class="fas fa-exchange-alt me-1"></i> Update Status
+                  </button>
+                </td>
+              </tr>
+              {% endfor %}
+            {% else %}
+              <tr>
+                <td colspan="9" class="text-center py-5 text-muted">
+                  <i class="fas fa-suitcase-rolling fa-3x mb-3 text-secondary opacity-50 d-block"></i>
+                  <h6 class="fw-semibold">No baggage items found</h6>
+                  <p class="small text-muted mb-3">No baggage matches the current query or no items are checked in yet.</p>
+                  <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addBaggageModal">
+                    <i class="fas fa-plus me-1"></i> Check In Baggage
+                  </button>
+                </td>
+              </tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Add Baggage Modal -->
+<div class="modal fade" id="addBaggageModal" tabindex="-1" aria-labelledby="addBaggageModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form action="/baggage/add" method="POST">
+        <div class="modal-header">
+          <h5 class="modal-title fw-bold" id="addBaggageModalLabel">
+            <i class="fas fa-suitcase-rolling text-primary me-2"></i>Add Baggage Check-in
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="passenger_select" class="form-label fw-semibold">Passenger <span class="text-danger">*</span></label>
+            <select class="form-select" id="passenger_select" name="passenger_id" required onchange="handlePassengerChange(this)">
+              <option value="" disabled selected>Select a passenger...</option>
+              {% if passengers %}
+                {% for p in passengers %}
+                  <option 
+                    value="{{ p.id }}" 
+                    data-flight="{{ p.flight_number }}" 
+                    data-pax-id="{{ p.passenger_id }}"
+                  >
+                    {{ p.passenger_id }} - {{ p.name }} ({{ p.flight_number }})
+                  </option>
+                {% endfor %}
+              {% endif %}
+            </select>
+            <div class="form-text">Baggage priority is automatically calculated using the passenger's category and flight status.</div>
+          </div>
+
+          <div class="mb-3">
+            <label for="baggage_flight_number" class="form-label fw-semibold">Flight Number <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" id="baggage_flight_number" name="flight_number" required placeholder="e.g. AI-202" style="text-transform: uppercase;">
+          </div>
+
+          <div class="mb-3">
+            <label for="baggage_weight" class="form-label fw-semibold">Weight (kg)</label>
+            <input type="number" step="0.1" class="form-control" id="baggage_weight" name="weight" placeholder="e.g. 23.5" value="20.0">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">
+            <i class="fas fa-check me-1"></i> Register Baggage
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Update Status Modal -->
+<div class="modal fade" id="updateStatusModal" tabindex="-1" aria-labelledby="updateStatusModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form id="updateStatusForm" action="" method="POST">
+        <div class="modal-header">
+          <h5 class="modal-title fw-bold" id="updateStatusModalLabel">
+            <i class="fas fa-exchange-alt text-primary me-2"></i>Update Baggage Status
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p class="mb-3">Updating status for baggage item: <strong id="modalBaggageIdDisplay" class="font-monospace text-primary"></strong></p>
+          
+          <div class="mb-3">
+            <label for="update_status" class="form-label fw-semibold">Select Current Status <span class="text-danger">*</span></label>
+            <select class="form-select form-select-lg" id="update_status" name="status" required>
+              <option value="Checked In">Checked In</option>
+              <option value="Processing">Processing</option>
+              <option value="Loaded">Loaded</option>
+              <option value="Arrived">Arrived</option>
+              <option value="Claim Ready">Claim Ready (Ready for Passenger)</option>
+              <option value="Collected">Collected</option>
+              <option value="Delayed">Delayed</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">
+            <i class="fas fa-save me-1"></i> Update Status
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  function updateStatus(id, currentStatus, baggageId) {
+    const form = document.getElementById('updateStatusForm');
+    form.action = `/baggage/update-status/${id}`;
+
+    if (baggageId) {
+      document.getElementById('modalBaggageIdDisplay').textContent = baggageId;
+    } else {
+      document.getElementById('modalBaggageIdDisplay').textContent = `#${id}`;
+    }
+
+    const select = document.getElementById('update_status');
+    if (select) {
+      select.value = currentStatus || 'Checked In';
+    }
+
+    const modal = new bootstrap.Modal(document.getElementById('updateStatusModal'));
+    modal.show();
+  }
+
+  function handlePassengerChange(selectElem) {
+    const selectedOption = selectElem.options[selectElem.selectedIndex];
+    const flightNumber = selectedOption.getAttribute('data-flight');
+    if (flightNumber) {
+      document.getElementById('baggage_flight_number').value = flightNumber;
+    }
+  }
+</script>
+{% endblock %}

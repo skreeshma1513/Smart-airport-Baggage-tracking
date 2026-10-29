@@ -1,0 +1,592 @@
+{% extends "base.html" %}
+
+{% block title %}Track Baggage{% endblock %}
+{% block page_title %}Passenger Baggage Tracking{% endblock %}
+
+{% block extra_css %}
+<style>
+  /* Baggage Stepper Styles */
+  .journey-stepper {
+    display: flex;
+    justify-content: space-between;
+    position: relative;
+    margin: 2rem 0;
+  }
+  
+  .journey-stepper::before {
+    content: '';
+    position: absolute;
+    top: 24px;
+    left: 40px;
+    right: 40px;
+    height: 4px;
+    background-color: #e2e8f0;
+    z-index: 1;
+  }
+
+  .journey-progress-bar {
+    position: absolute;
+    top: 24px;
+    left: 40px;
+    height: 4px;
+    background-color: #10b981;
+    z-index: 1;
+    transition: width 0.4s ease;
+  }
+
+  .step-item {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    flex: 1;
+  }
+
+  .step-circle {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background-color: #ffffff;
+    border: 3px solid #cbd5e1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    color: #94a3b8;
+    margin-bottom: 0.5rem;
+    transition: all 0.3s ease;
+  }
+
+  .step-item.completed .step-circle {
+    background-color: #10b981;
+    border-color: #10b981;
+    color: #ffffff;
+  }
+
+  .step-item.active .step-circle {
+    background-color: #2563eb;
+    border-color: #93c5fd;
+    color: #ffffff;
+    box-shadow: 0 0 0 5px rgba(37, 99, 235, 0.25);
+    animation: pulse 2s infinite;
+  }
+
+  .step-item.delayed .step-circle {
+    background-color: #ef4444;
+    border-color: #fca5a5;
+    color: #ffffff;
+    box-shadow: 0 0 0 5px rgba(239, 68, 68, 0.25);
+  }
+
+  .step-label {
+    font-size: 0.825rem;
+    font-weight: 600;
+    color: #64748b;
+    margin-bottom: 0.2rem;
+  }
+
+  .step-item.completed .step-label {
+    color: #10b981;
+  }
+
+  .step-item.active .step-label {
+    color: #2563eb;
+  }
+
+  .step-item.delayed .step-label {
+    color: #ef4444;
+  }
+
+  @keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.08); }
+    100% { transform: scale(1); }
+  }
+
+  @media (max-width: 768px) {
+    .journey-stepper {
+      flex-direction: column;
+      align-items: flex-start;
+      padding-left: 20px;
+    }
+    .journey-stepper::before, .journey-progress-bar {
+      top: 0;
+      bottom: 0;
+      left: 44px;
+      width: 4px;
+      height: 100%;
+      right: auto;
+    }
+    .step-item {
+      flex-direction: row;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+      text-align: left;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="tracking-container">
+  <!-- Search Section -->
+  <div class="row justify-content-center mb-4">
+    <div class="col-12 col-lg-8">
+      <div class="card shadow-sm border-0">
+        <div class="card-body p-4 text-center">
+          <div class="rounded-circle bg-primary bg-opacity-10 text-primary p-3 d-inline-flex mb-3">
+            <i class="fas fa-search-location fa-2x"></i>
+          </div>
+          <h4 class="fw-bold text-dark mb-2">Track Baggage & Assistance Status</h4>
+          <p class="text-muted small mb-4">Enter your Passenger ID or Baggage ID to see real-time handling status, queue priority, and assistance progress.</p>
+
+          <form id="trackingForm" onsubmit="event.preventDefault(); trackBaggage();" class="d-flex flex-column flex-sm-row gap-2">
+            <div class="input-group input-group-lg flex-grow-1">
+              <span class="input-group-text bg-white border-end-0">
+                <i class="fas fa-barcode text-muted"></i>
+              </span>
+              <input 
+                type="text" 
+                id="searchQuery" 
+                class="form-control border-start-0" 
+                placeholder="Enter Passenger ID (e.g., PAX1001) or Baggage ID (e.g., BG1001)" 
+                required
+                autocomplete="off"
+              >
+            </div>
+            <button type="submit" class="btn btn-primary btn-lg px-4" id="trackButton">
+              <i class="fas fa-search me-1"></i> Track
+            </button>
+          </form>
+
+          <div id="trackingLoading" class="text-center mt-3 d-none">
+            <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
+            <span class="text-muted small">Locating baggage and passenger information...</span>
+          </div>
+
+          <div id="trackingError" class="alert alert-danger d-none mt-3 text-start small mb-0" role="alert">
+            <i class="fas fa-exclamation-circle me-2"></i>
+            <span id="errorMessageText">No records found matching that ID. Please check the ID and try again.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Results Section (Initially Hidden) -->
+  <div id="trackingResults" class="d-none">
+    <!-- Top Row: Passenger Info & Baggage Info -->
+    <div class="row g-4 mb-4">
+      <!-- Passenger Info Card -->
+      <div class="col-lg-5">
+        <div class="card shadow-sm h-100">
+          <div class="card-header bg-white py-3">
+            <div class="d-flex align-items-center gap-2">
+              <i class="fas fa-user-circle text-primary"></i>
+              <h5 class="mb-0 fw-bold">Passenger Details</h5>
+            </div>
+          </div>
+          <div class="card-body p-4">
+            <div class="d-flex align-items-center gap-3 mb-4">
+              <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center fw-bold fs-4" style="width: 56px; height: 56px;" id="paxAvatar">
+                PAX
+              </div>
+              <div>
+                <h5 class="mb-0 fw-bold text-dark" id="paxName">—</h5>
+                <span class="badge bg-light text-dark border font-monospace" id="paxIdBadge">—</span>
+              </div>
+            </div>
+
+            <ul class="list-group list-group-flush small">
+              <li class="list-group-item d-flex justify-content-between px-0 py-2">
+                <span class="text-muted">Flight Number:</span>
+                <span class="fw-bold font-monospace" id="paxFlight">—</span>
+              </li>
+              <li class="list-group-item d-flex justify-content-between px-0 py-2">
+                <span class="text-muted">Category:</span>
+                <span id="paxCategoryBadge">—</span>
+              </li>
+              <li class="list-group-item d-flex justify-content-between px-0 py-2">
+                <span class="text-muted">Assistance Required:</span>
+                <span class="fw-semibold text-dark" id="paxAssistance">—</span>
+              </li>
+              <li class="list-group-item d-flex justify-content-between px-0 py-2">
+                <span class="text-muted">Contact Phone:</span>
+                <span class="text-muted" id="paxPhone">—</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- Baggage Info Card -->
+      <div class="col-lg-7">
+        <div class="card shadow-sm h-100">
+          <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+            <div class="d-flex align-items-center gap-2">
+              <i class="fas fa-suitcase-rolling text-info"></i>
+              <h5 class="mb-0 fw-bold">Baggage Priority & Status</h5>
+            </div>
+            <span class="badge bg-light text-dark border font-monospace fs-6" id="bagIdDisplay">—</span>
+          </div>
+          <div class="card-body p-4">
+            <div class="row g-3 mb-3">
+              <div class="col-sm-6">
+                <div class="p-3 bg-light rounded">
+                  <div class="text-muted small">Current Handling Status</div>
+                  <div class="mt-1" id="bagStatusBadge">—</div>
+                </div>
+              </div>
+              <div class="col-sm-6">
+                <div class="p-3 bg-light rounded">
+                  <div class="text-muted small">Estimated Waiting Time</div>
+                  <div class="fw-bold fs-5 text-dark mt-1" id="bagWaitTime">—</div>
+                </div>
+              </div>
+              <div class="col-sm-6">
+                <div class="p-3 bg-light rounded">
+                  <div class="text-muted small">AI Priority Score</div>
+                  <div class="d-flex align-items-center gap-2 mt-1">
+                    <span class="fw-bold fs-5 text-dark" id="bagPriorityScore">—</span>
+                    <span id="bagPriorityLevelBadge">—</span>
+                  </div>
+                </div>
+              </div>
+              <div class="col-sm-6">
+                <div class="p-3 bg-light rounded">
+                  <div class="text-muted small">Delay Risk Level</div>
+                  <div class="mt-1" id="bagDelayRiskBadge">—</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Priority & Delay Reasons -->
+            <div class="d-flex flex-column gap-2 small">
+              <div class="alert alert-secondary py-2 px-3 mb-0 d-flex align-items-start gap-2">
+                <i class="fas fa-brain text-primary mt-1"></i>
+                <div>
+                  <strong>Priority Reason:</strong>
+                  <span id="bagPriorityReason">Calculated based on passenger profile.</span>
+                </div>
+              </div>
+              <div id="delayReasonContainer" class="alert alert-warning py-2 px-3 mb-0 d-flex align-items-start gap-2 d-none">
+                <i class="fas fa-clock text-warning mt-1"></i>
+                <div>
+                  <strong>Delay Note:</strong>
+                  <span id="bagDelayReason">—</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Baggage Journey Stepper -->
+    <div class="card shadow-sm mb-4">
+      <div class="card-header bg-white py-3">
+        <div class="d-flex align-items-center gap-2">
+          <i class="fas fa-route text-success"></i>
+          <h5 class="mb-0 fw-bold">Live Baggage Journey</h5>
+        </div>
+      </div>
+      <div class="card-body p-4">
+        <!-- Delay Alert (if delayed) -->
+        <div id="delayedBanner" class="alert alert-danger d-flex align-items-center mb-4 d-none">
+          <i class="fas fa-exclamation-triangle fa-2x me-3"></i>
+          <div>
+            <h6 class="fw-bold mb-1">Baggage Delay Detected</h6>
+            <div id="delayedBannerText" class="small">This bag has been flagged for delay. Ground operations and staff are expediting handling.</div>
+          </div>
+        </div>
+
+        <div class="journey-stepper" id="journeyStepper">
+          <div class="journey-progress-bar" id="stepperProgressBar" style="width: 0%;"></div>
+
+          <!-- Step 1: Checked In -->
+          <div class="step-item" id="step-CheckedIn">
+            <div class="step-circle"><i class="fas fa-check"></i></div>
+            <div class="step-label">Checked In</div>
+            <small class="text-muted">Terminal Desk</small>
+          </div>
+
+          <!-- Step 2: Processing -->
+          <div class="step-item" id="step-Processing">
+            <div class="step-circle"><i class="fas fa-cog"></i></div>
+            <div class="step-label">Processing</div>
+            <small class="text-muted">Sorting System</small>
+          </div>
+
+          <!-- Step 3: Loaded -->
+          <div class="step-item" id="step-Loaded">
+            <div class="step-circle"><i class="fas fa-plane-departure"></i></div>
+            <div class="step-label">Loaded</div>
+            <small class="text-muted">Aircraft Hold</small>
+          </div>
+
+          <!-- Step 4: Arrived -->
+          <div class="step-item" id="step-Arrived">
+            <div class="step-circle"><i class="fas fa-plane-arrival"></i></div>
+            <div class="step-label">Arrived</div>
+            <small class="text-muted">Unloading</small>
+          </div>
+
+          <!-- Step 5: Claim Ready -->
+          <div class="step-item" id="step-ClaimReady">
+            <div class="step-circle"><i class="fas fa-luggage-cart"></i></div>
+            <div class="step-label">Claim Ready</div>
+            <small class="text-muted">Baggage Carousel</small>
+          </div>
+
+          <!-- Step 6: Collected -->
+          <div class="step-item" id="step-Collected">
+            <div class="step-circle"><i class="fas fa-hand-holding"></i></div>
+            <div class="step-label">Collected</div>
+            <small class="text-muted">Delivered</small>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Assistance Requests Card -->
+    <div class="card shadow-sm" id="assistanceCard">
+      <div class="card-header bg-white py-3">
+        <div class="d-flex align-items-center gap-2">
+          <i class="fas fa-hands-helping text-primary"></i>
+          <h5 class="mb-0 fw-bold">Associated Assistance Requests</h5>
+        </div>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead>
+              <tr>
+                <th scope="col">Request ID</th>
+                <th scope="col">Assistance Type</th>
+                <th scope="col">Status</th>
+                <th scope="col">Notes</th>
+                <th scope="col">Timestamp</th>
+              </tr>
+            </thead>
+            <tbody id="assistanceTableBody">
+              <tr>
+                <td colspan="5" class="text-center py-3 text-muted">No assistance requests on record for this passenger.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const STEPS_ORDER = ['Checked In', 'Processing', 'Loaded', 'Arrived', 'Claim Ready', 'Collected'];
+
+  function trackBaggage() {
+    const input = document.getElementById('searchQuery');
+    const query = input.value.trim();
+    if (!query) return;
+
+    const loadingElem = document.getElementById('trackingLoading');
+    const errorElem = document.getElementById('trackingError');
+    const resultsElem = document.getElementById('trackingResults');
+    const trackBtn = document.getElementById('trackButton');
+
+    loadingElem.classList.remove('d-none');
+    errorElem.classList.add('d-none');
+    resultsElem.classList.add('d-none');
+    trackBtn.disabled = true;
+
+    fetch(`/api/track?query=${encodeURIComponent(query)}`)
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('Tracking record not found');
+        }
+        return response.json();
+      })
+      .then(data => {
+        loadingElem.classList.add('d-none');
+        trackBtn.disabled = false;
+
+        if (data.error || (!data.passenger && !data.baggage)) {
+          showError(data.error || 'No matching passenger or baggage record found.');
+          return;
+        }
+
+        renderTrackingData(data);
+      })
+      .catch(err => {
+        loadingElem.classList.add('d-none');
+        trackBtn.disabled = false;
+        showError(err.message || 'Error communicating with tracking service.');
+      });
+  }
+
+  function showError(msg) {
+    const errorElem = document.getElementById('trackingError');
+    document.getElementById('errorMessageText').textContent = msg;
+    errorElem.classList.remove('d-none');
+    document.getElementById('trackingResults').classList.add('d-none');
+  }
+
+  function renderTrackingData(data) {
+    const p = data.passenger || {};
+    const b = (data.baggage && data.baggage.length > 0) ? data.baggage[0] : (data.baggage || {});
+    const assist = data.assistance || [];
+
+    // Render Passenger Info
+    document.getElementById('paxName').textContent = p.name || 'Passenger';
+    document.getElementById('paxIdBadge').textContent = p.passenger_id || '—';
+    document.getElementById('paxFlight').textContent = p.flight_number || (b.flight_number || '—');
+    document.getElementById('paxPhone').textContent = p.phone || 'Not provided';
+    document.getElementById('paxAssistance').textContent = p.assistance_required || 'None';
+    
+    // Avatar initials
+    if (p.name) {
+      const parts = p.name.split(' ');
+      document.getElementById('paxAvatar').textContent = parts.map(n => n[0]).join('').substring(0, 2).toUpperCase();
+    }
+
+    // Category Badge
+    const cat = p.category || 'Normal';
+    let catBadgeClass = 'bg-secondary';
+    if (cat === 'Elderly') catBadgeClass = 'bg-warning text-dark';
+    else if (cat === 'Pregnant') catBadgeClass = 'bg-info text-dark';
+    else if (cat === 'Differently-Abled') catBadgeClass = 'bg-danger';
+    else if (cat === 'Special Assistance') catBadgeClass = 'bg-primary';
+    document.getElementById('paxCategoryBadge').innerHTML = `<span class="badge ${catBadgeClass}">${cat}</span>`;
+
+    // Render Baggage Info
+    document.getElementById('bagIdDisplay').textContent = b.baggage_id || 'No Baggage';
+    
+    const status = b.status || 'Checked In';
+    document.getElementById('bagStatusBadge').innerHTML = getStatusBadge(status);
+    document.getElementById('bagWaitTime').innerHTML = `<i class="far fa-clock me-1 text-primary"></i>${b.estimated_wait_time || b.estimated_wait || '15'} mins`;
+    
+    // Priority
+    const priorityScore = b.priority_score !== undefined ? b.priority_score : '—';
+    document.getElementById('bagPriorityScore').textContent = priorityScore;
+    
+    const pLevel = b.priority_level || 'LOW';
+    let pLevelClass = 'bg-success';
+    if (pLevel === 'HIGH') pLevelClass = 'bg-danger';
+    else if (pLevel === 'MEDIUM') pLevelClass = 'bg-warning text-dark';
+    document.getElementById('bagPriorityLevelBadge').innerHTML = `<span class="badge ${pLevelClass}">${pLevel} PRIORITY</span>`;
+
+    // Delay Risk
+    const dRisk = b.delay_risk || 'LOW';
+    let dRiskClass = 'bg-success';
+    if (dRisk === 'HIGH') dRiskClass = 'bg-danger';
+    else if (dRisk === 'MEDIUM') dRiskClass = 'bg-warning text-dark';
+    document.getElementById('bagDelayRiskBadge').innerHTML = `<span class="badge ${dRiskClass}">${dRisk} RISK</span>`;
+
+    // Reasons
+    document.getElementById('bagPriorityReason').textContent = b.priority_reason || 'Standard baggage handling queue.';
+    if (b.delay_risk_reason || status === 'Delayed') {
+      document.getElementById('delayReasonContainer').classList.remove('d-none');
+      document.getElementById('bagDelayReason').textContent = b.delay_risk_reason || 'Flight or luggage processing delay reported.';
+    } else {
+      document.getElementById('delayReasonContainer').classList.add('d-none');
+    }
+
+    // Stepper updates
+    updateStepper(status);
+
+    // Assistance list
+    renderAssistanceList(assist);
+
+    // Reveal container
+    document.getElementById('trackingResults').classList.remove('d-none');
+  }
+
+  function getStatusBadge(status) {
+    if (status === 'Delayed') return '<span class="badge bg-danger fs-6"><i class="fas fa-exclamation-triangle me-1"></i>Delayed</span>';
+    if (status === 'Claim Ready') return '<span class="badge bg-success fs-6 fw-bold"><i class="fas fa-check-circle me-1"></i>Claim Ready</span>';
+    if (status === 'Collected') return '<span class="badge bg-dark fs-6">Collected</span>';
+    if (status === 'Loaded') return '<span class="badge bg-info text-dark fs-6">Loaded</span>';
+    if (status === 'Arrived') return '<span class="badge bg-success fs-6">Arrived</span>';
+    if (status === 'Processing') return '<span class="badge bg-primary fs-6">Processing</span>';
+    return '<span class="badge bg-secondary fs-6">Checked In</span>';
+  }
+
+  function updateStepper(currentStatus) {
+    const isDelayed = (currentStatus === 'Delayed');
+    const delayedBanner = document.getElementById('delayedBanner');
+    if (isDelayed) {
+      delayedBanner.classList.remove('d-none');
+    } else {
+      delayedBanner.classList.add('d-none');
+    }
+
+    const stepIds = {
+      'Checked In': 'step-CheckedIn',
+      'Processing': 'step-Processing',
+      'Loaded': 'step-Loaded',
+      'Arrived': 'step-Arrived',
+      'Claim Ready': 'step-ClaimReady',
+      'Collected': 'step-Collected'
+    };
+
+    let targetIndex = STEPS_ORDER.indexOf(currentStatus);
+    if (targetIndex === -1) {
+      targetIndex = isDelayed ? 1 : 0; // Default anchor if delayed
+    }
+
+    const progressBar = document.getElementById('stepperProgressBar');
+    const progressPercent = (targetIndex / (STEPS_ORDER.length - 1)) * 100;
+    progressBar.style.width = `${progressPercent}%`;
+
+    STEPS_ORDER.forEach((step, idx) => {
+      const elId = stepIds[step];
+      const el = document.getElementById(elId);
+      if (!el) return;
+
+      el.classList.remove('completed', 'active', 'delayed');
+
+      if (idx < targetIndex) {
+        el.classList.add('completed');
+      } else if (idx === targetIndex) {
+        if (isDelayed) {
+          el.classList.add('delayed');
+        } else {
+          el.classList.add('active');
+        }
+      }
+    });
+  }
+
+  function renderAssistanceList(requests) {
+    const tbody = document.getElementById('assistanceTableBody');
+    tbody.innerHTML = '';
+
+    if (!requests || requests.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="5" class="text-center py-3 text-muted">No assistance requests on record for this passenger.</td></tr>`;
+      return;
+    }
+
+    requests.forEach(req => {
+      let stBadge = '<span class="badge bg-secondary">Pending</span>';
+      if (req.status === 'Completed') stBadge = '<span class="badge bg-success">Completed</span>';
+      else if (req.status === 'Assigned') stBadge = '<span class="badge bg-primary">Assigned</span>';
+      else if (req.status === 'Pending') stBadge = '<span class="badge bg-warning text-dark">Pending</span>';
+
+      const dateStr = req.created_at || 'Recent';
+
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><span class="badge bg-light text-dark border font-monospace">#${req.request_id || req.id}</span></td>
+        <td class="fw-semibold">${req.assistance_type || 'General Assistance'}</td>
+        <td>${stBadge}</td>
+        <td class="text-muted small">${req.notes || '—'}</td>
+        <td class="text-muted small">${dateStr}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+</script>
+{% endblock %}
