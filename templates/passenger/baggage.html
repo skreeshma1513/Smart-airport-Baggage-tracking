@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<h1>Baggage Tracking</h1>
+
+<div class="tracking-card">
+
+    <h2>{{ baggage.baggage_id }}</h2>
+
+    <div class="big-status">
+        {{ baggage.status }}
+    </div>
+
+    <p>
+        Priority:
+        <strong>{{ baggage.priority_level }}</strong>
+    </p>
+
+    <p>
+        Priority Score:
+        <strong>{{ baggage.priority_score }}</strong>
+    </p>
+
+    <p>
+        Estimated Arrival:
+        <strong>{{ baggage.estimated_minutes }} minutes</strong>
+    </p>
+
+    <p>
+        Delay Risk:
+        <strong>{{ baggage.delay_risk }}</strong>
+    </p>
+
+</div>
+
+{% endblock %}

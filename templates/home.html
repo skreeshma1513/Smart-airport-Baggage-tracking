@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<section class="hero">
+
+    <div>
+        <span class="badge">AI-ASSISTED AIRPORT PLATFORM</span>
+
+        <h1>
+            Smarter Baggage.
+            <br>
+            Better Passenger Assistance.
+        </h1>
+
+        <p>
+            A software-based airport intelligence platform that
+            prioritizes baggage for passengers requiring additional
+            assistance and provides real-time baggage visibility.
+        </p>
+
+        <div class="hero-buttons">
+            <a class="button" href="{{ url_for('auth.login') }}">
+                Login
+            </a>
+
+            <a class="button secondary"
+               href="{{ url_for('auth.register') }}">
+                Create Account
+            </a>
+        </div>
+    </div>
+
+</section>
+
+<section class="features">
+
+    <div class="card">
+        <h3>?? Smart Priority</h3>
+        <p>
+            Calculates baggage priority using passenger assistance
+            requirements, mobility needs, age and connection risk.
+        </p>
+    </div>
+
+    <div class="card">
+        <h3>?? Baggage Tracking</h3>
+        <p>
+            Track baggage through digital status updates from
+            check-in to collection.
+        </p>
+    </div>
+
+    <div class="card">
+        <h3>? Assistance</h3>
+        <p>
+            Passengers can submit assistance requests directly
+            through the platform.
+        </p>
+    </div>
+
+    <div class="card">
+        <h3>????? Staff Dashboard</h3>
+        <p>
+            Airport staff can monitor priority baggage and
+            passenger assistance requests.
+        </p>
+    </div>
+
+</section>
+
+{% endblock %}

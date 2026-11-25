@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="auth-card">
+
+    <h2>Smart Airport</h2>
+    <p>Passenger / Staff Login</p>
+
+    <form method="POST">
+
+        <label>Email</label>
+        <input type="email" name="email" required>
+
+        <label>Password</label>
+        <input type="password" name="password" required>
+
+        <button class="button" type="submit">
+            Login
+        </button>
+
+    </form>
+
+    <p>
+        New passenger?
+        <a href="{{ url_for('auth.register') }}">Create account</a>
+    </p>
+
+</div>
+
+{% endblock %}

@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<h1>Admin Dashboard</h1>
+
+<div class="stats">
+
+<div class="stat-card">
+    <span>Passengers</span>
+    <strong>{{ passenger_count }}</strong>
+</div>
+
+<div class="stat-card">
+    <span>Staff</span>
+    <strong>{{ staff_count }}</strong>
+</div>
+
+<div class="stat-card">
+    <span>Baggage</span>
+    <strong>{{ baggage_count }}</strong>
+</div>
+
+<div class="stat-card">
+    <span>Pending Assistance</span>
+    <strong>{{ assistance_count }}</strong>
+</div>
+
+</div>
+
+<div class="card">
+
+<h2>System Overview</h2>
+
+<p>
+Smart Airport provides AI-assisted baggage prioritization,
+passenger assistance management and digital baggage tracking.
+</p>
+
+</div>
+
+{% endblock %}

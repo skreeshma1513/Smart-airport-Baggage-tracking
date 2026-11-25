@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<h1>Airport Staff Dashboard</h1>
+
+<div class="stats">
+
+    <div class="stat-card">
+        <span>Total Baggage</span>
+        <strong>{{ baggage|length }}</strong>
+    </div>
+
+    <div class="stat-card">
+        <span>Assistance Requests</span>
+        <strong>{{ assistance|length }}</strong>
+    </div>
+
+</div>
+
+<h2>Priority Baggage Queue</h2>
+
+<div class="table-card">
+
+<table>
+
+<tr>
+    <th>Baggage</th>
+    <th>Passenger</th>
+    <th>Priority</th>
+    <th>Score</th>
+    <th>Status</th>
+    <th>Update</th>
+</tr>
+
+{% for item in baggage %}
+
+<tr>
+
+<td>{{ item.baggage_id }}</td>
+
+<td>{{ item.passenger.user.name }}</td>
+
+<td>
+<span class="priority {{ item.priority_level|lower }}">
+{{ item.priority_level }}
+</span>
+</td>
+
+<td>{{ item.priority_score }}</td>
+
+<td>{{ item.status }}</td>
+
+<td>
+
+<form method="POST"
+action="{{ url_for(
+'staff.update_baggage',
+baggage_id=item.id
+) }}">
+
+<select name="status">
+
+<option>Checked-in</option>
+<option>Processing</option>
+<option>Loaded</option>
+<option>Arrived</option>
+<option>Claim Ready</option>
+<option>Collected</option>
+
+</select>
+
+<button class="small-button">
+Update
+</button>
+
+</form>
+
+</td>
+
+</tr>
+
+{% endfor %}
+
+</table>
+
+</div>
+
+<h2>Assistance Requests</h2>
+
+<div class="table-card">
+
+<table>
+
+<tr>
+    <th>Passenger</th>
+    <th>Request</th>
+    <th>Location</th>
+    <th>Status</th>
+    <th>Action</th>
+</tr>
+
+{% for item in assistance %}
+
+<tr>
+
+<td>{{ item.passenger.user.name }}</td>
+<td>{{ item.request_type }}</td>
+<td>{{ item.location }}</td>
+<td>{{ item.status }}</td>
+
+<td>
+
+{% if item.status != "Resolved" %}
+
+<form method="POST"
+action="{{ url_for(
+'staff.resolve_assistance',
+request_id=item.id
+) }}">
+
+<button class="small-button">
+Resolve
+</button>
+
+</form>
+
+{% endif %}
+
+</td>
+
+</tr>
+
+{% endfor %}
+
+</table>
+
+</div>
+
+{% endblock %}

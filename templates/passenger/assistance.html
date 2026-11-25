@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<h1>Passenger Assistance</h1>
+
+<div class="form-card">
+
+<form method="POST">
+
+<label>Assistance Type</label>
+
+<select name="request_type" required>
+    <option value="">Select</option>
+    <option>Wheelchair Assistance</option>
+    <option>Mobility Assistance</option>
+    <option>Elderly Passenger Assistance</option>
+    <option>Pregnancy Assistance</option>
+    <option>Other Special Assistance</option>
+</select>
+
+<label>Current Location</label>
+
+<input
+    type="text"
+    name="location"
+    placeholder="Example: Gate A12"
+    required
+>
+
+<button class="button" type="submit">
+    Request Assistance
+</button>
+
+</form>
+
+</div>
+
+<h2>My Requests</h2>
+
+<div class="table-card">
+
+<table>
+
+<tr>
+    <th>Type</th>
+    <th>Location</th>
+    <th>Status</th>
+</tr>
+
+{% for item in requests %}
+
+<tr>
+    <td>{{ item.request_type }}</td>
+    <td>{{ item.location }}</td>
+    <td>{{ item.status }}</td>
+</tr>
+
+{% else %}
+
+<tr>
+    <td colspan="3">No requests yet.</td>
+</tr>
+
+{% endfor %}
+
+</table>
+
+</div>
+
+{% endblock %}
